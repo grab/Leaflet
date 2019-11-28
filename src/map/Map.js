@@ -195,7 +195,7 @@ L.Map = L.Evented.extend({
 
 		    zoom = this.getBoundsZoom(bounds, false, paddingTL.add(paddingBR));
 
-		zoom = (typeof options.maxZoom === 'number') ? Math.min(options.maxZoom, zoom) : zoom;
+		zoom = (options.maxZoom) ? Math.min(options.maxZoom, zoom) : zoom;
 
 		var paddingOffset = paddingBR.subtract(paddingTL).divideBy(2),
 
@@ -203,25 +203,7 @@ L.Map = L.Evented.extend({
 		    nePoint = this.project(bounds.getNorthEast(), zoom),
 		    center = this.unproject(swPoint.add(nePoint).divideBy(2).add(paddingOffset), zoom);
 
-		return {
-			center: center,
-			zoom: zoom
-		};
-	},
-
-	// @method fitBounds(bounds: LatLngBounds, options: fitBounds options): this
-	// Sets a map view that contains the given geographical bounds with the
-	// maximum zoom level possible.
-	fitBounds: function (bounds, options) {
-
-		bounds = L.latLngBounds(bounds);
-
-		if (!bounds.isValid()) {
-			throw new Error('Bounds are not valid.');
-		}
-
-		var target = this._getBoundsCenterZoom(bounds, options);
-		return this.setView(target.center, target.zoom, options);
+		return this.setView(center, zoom, options);
 	},
 
 	// @method fitWorld(options?: fitBounds options): this
@@ -851,18 +833,14 @@ L.Map = L.Evented.extend({
 		return this.fire('move', data);
 	},
 
-	_moveEnd: function (zoomChanged) {
-		// @event zoomend: Event
-		// Fired when the map has changed, after any animations.
-		if (zoomChanged) {
-			this.fire('zoomend');
+		this.fire('viewreset', {hard: !preserveMapOffset});
+
+		if (loading) {
+			this.fire('load');
+			this.eachLayer(this._layerAdd, this);
 		}
 
-		// @event moveend: Event
-		// Fired when the center of the map stops changing (e.g. user stopped
-		// dragging the map).
-		return this.fire('moveend');
-	},
+		this.fire('move');
 
 	_stop: function () {
 		L.Util.cancelAnimFrame(this._flyToFrame);

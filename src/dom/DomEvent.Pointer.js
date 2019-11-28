@@ -21,12 +21,21 @@ L.extend(L.DomEvent, {
 		if (type === 'touchstart') {
 			this._addPointerStart(obj, handler, id);
 
-		} else if (type === 'touchmove') {
-			this._addPointerMove(obj, handler, id);
+		var cb = function (e) {
+			if (e.pointerType !== 'mouse' && e.pointerType !== e.MSPOINTER_TYPE_MOUSE) {
+				L.DomEvent.preventDefault(e);
+			}
 
-		} else if (type === 'touchend') {
-			this._addPointerEnd(obj, handler, id);
-		}
+			var alreadyInArray = false;
+			for (var i = 0; i < pointers.length; i++) {
+				if (pointers[i].pointerId === e.pointerId) {
+					alreadyInArray = true;
+					break;
+				}
+			}
+			if (!alreadyInArray) {
+				pointers.push(e);
+			}
 
 		return this;
 	},

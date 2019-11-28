@@ -233,5 +233,6 @@ exports.test = function(complete, fail) {
 			process.exit(exitCode);
 		}
 	});
+
 	server.start();
 };
