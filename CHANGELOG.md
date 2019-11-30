@@ -410,7 +410,6 @@ Animation code in Leaflet had undergone a major rewrite (main PR: [#2382](https:
 
 Note tha we skipped 0.7.6 version for which we accidentally published a broken build to NPM.
 
-
 ## 0.7.5 (September 2, 2015)
 
 * Fixed a regression that broke animation in Leaflet.markercluster. [#3796](https://github.com/Leaflet/Leaflet/issues/3796)
@@ -422,7 +421,7 @@ Note tha we skipped 0.7.6 version for which we accidentally published a broken b
 * Fixed a bug where tile layers were not respecting their `minZoom` or `maxZoom` options (by [@ivansanchez](https://github.com/ivansanchez)) [#3778](https://github.com/Leaflet/Leaflet/pull/3778)
 * Improved detection of touch-capable web browsers, in particular fixing touch interactions in device emulation mode in Chrome and Firefox (by [@ivansanchez](https://github.com/ivansanchez)) [#3520](https://github.com/Leaflet/Leaflet/pull/3520) [#3710](https://github.com/Leaflet/Leaflet/pull/3710)
 * Fixed a bug where tile layers with `maxNativeZoom` were not checking bounds properly (by [@jlaxon](https://github.com/jlaxon)) [#3415](https://github.com/Leaflet/Leaflet/pull/3152)
-* Fixed a bug where popups were not remembering which layer originated them after calling `bindPopup(popup)` (by [@Eschon](https://github.com/Eschon)) [#3675](https://github.com/Leaflet/Leaflet/pull/3675)
+* Fixed a bug where popups were not remembering which layer originated them after calling `bindPopup(popup)` (by [@Eschon](https://github.com/Eschon)) [#3675](https://github.com/Leaflet/Leaflet/pull/3765)
 * Fixed a race condition between markers and zoom animation (by [@perliedman](https://github.com/perliedman)) [#3152](https://github.com/Leaflet/Leaflet/pull/3152)
 * Fixed a bug with `Map.fitBounds` padding (by [@bsstoner](https://github.com/bsstoner)). [#2489](https://github.com/Leaflet/Leaflet/issues/2489)
 * Allow canvas paths to fire `dblclick` and `contextmenu` events (by [@ivansanchez](https://github.com/ivansanchez)) [#3482](https://github.com/Leaflet/Leaflet/pull/3482)
@@ -436,15 +435,14 @@ Note tha we skipped 0.7.6 version for which we accidentally published a broken b
 * Added proper **bower** and **component** support (by [@calvinmetcalf](https://github.com/calvinmetcalf)). [#2561](https://github.com/Leaflet/Leaflet/pull/2561) [#1903](https://github.com/Leaflet/Leaflet/issues/1903)
 * Fixed a bug where dragging the map outside the window caused an error on FF. [#2610](https://github.com/Leaflet/Leaflet/issues/2610)
 * Fixed a bug where some taps on Android where not working, often falsely perceived as drags (by [@axefrog](https://github.com/axefrog)). [#2503](https://github.com/Leaflet/Leaflet/pull/2503)
-* Fixed a bug where clicks on Android were skipped when happened too fast. [#2303](https://github.com/Leaflet/Leaflet/issues/2303)
+* Fixed a bug where tapping too quickly on Android ignored most taps. [#2303](https://github.com/Leaflet/Leaflet/issues/2303)
 * Fixed a bug where calling `setView` (or similar methods) several times in succession could freeze the map. [#2521](https://github.com/Leaflet/Leaflet/issues/2521) [#2236](https://github.com/Leaflet/Leaflet/issues/2236) [#2485](https://github.com/Leaflet/Leaflet/issues/2485)
 * Fixed a bug where `Control.Layers` wasn't properly removed (by [@jack-kerouac](https://github.com/jack-kerouac)). [#2569](https://github.com/Leaflet/Leaflet/pull/2569)
 * Fixed a bug that caused `TileLayer` `load` event not to fire properly. [#2510](https://github.com/Leaflet/Leaflet/issues/2510)
 * Fixed Canvas-based paths not triggering `remove` event when removed (by @adimitrov). [#2486](https://github.com/Leaflet/Leaflet/pull/2486)
 * Fixed a bug where you could end up with fractional zoom after pinch-zooming in some cases (by [@danzel](https://github.com/danzel). [#2400](https://github.com/Leaflet/Leaflet/pull/2400) [#1943](https://github.com/Leaflet/Leaflet/issues/1934)
 
-
-## 0.7.2 (January 17, 2014)
+## 0.7.2 (January 17, 2013)
 
 * Fixed a bug that appeared with **Chrome 32 update** that made all **mouse events shifted on scrolled pages**. [#2352](https://github.com/Leaflet/Leaflet/issues/2352)
 * Fixed a bug that could break tile loading when using non-standard tile sizes. [#2288](https://github.com/Leaflet/Leaflet/issues/2288)

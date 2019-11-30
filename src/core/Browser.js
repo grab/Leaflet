@@ -26,39 +26,22 @@
 	    chrome    = ua.indexOf('chrome') !== -1,
 	    gecko     = ua.indexOf('gecko') !== -1  && !webkit && !window.opera && !ie,
 
-	    mobile = typeof orientation !== 'undefined' || ua.indexOf('mobile') !== -1,
+	    mobile = typeof orientation !== undefined + '',
 	    msPointer = !window.PointerEvent && window.MSPointerEvent,
-	    pointer = window.PointerEvent || msPointer,
+		pointer = (window.PointerEvent && window.navigator.pointerEnabled) ||
+				  msPointer,
+	    retina = ('devicePixelRatio' in window && window.devicePixelRatio > 1) ||
+	             ('matchMedia' in window && window.matchMedia('(min-resolution:144dpi)') &&
+	              window.matchMedia('(min-resolution:144dpi)').matches),
 
 	    ie3d = ie && ('transition' in doc.style),
 	    webkit3d = ('WebKitCSSMatrix' in window) && ('m11' in new window.WebKitCSSMatrix()) && !android23,
 	    gecko3d = 'MozPerspective' in doc.style,
-	    opera12 = 'OTransition' in doc.style;
+	    opera3d = 'OTransition' in doc.style,
+	    any3d = !window.L_DISABLE_3D && (ie3d || webkit3d || gecko3d || opera3d) && !phantomjs;
 
-	var touch = !window.L_NO_TOUCH && (pointer || 'ontouchstart' in window ||
-			(window.DocumentTouch && document instanceof window.DocumentTouch));
-
-	L.Browser = {
-
-		// @property ie: Boolean
-		// `true` for all Internet Explorer versions (not Edge).
-		ie: ie,
-
-		// @property ielt9: Boolean
-		// `true` for Internet Explorer versions less than 9.
-		ielt9: ie && !document.addEventListener,
-
-		// @property edge: Boolean
-		// `true` for the Edge web browser.
-		edge: 'msLaunchUri' in navigator && !('documentMode' in document),
-
-		// @property webkit: Boolean
-		// `true` for webkit-based browsers like Chrome and Safari (including mobile versions).
-		webkit: webkit,
-
-		// @property gecko: Boolean
-		// `true` for gecko-based browsers like Firefox.
-		gecko: gecko,
+	var touch = !window.L_NO_TOUCH && !phantomjs && (pointer || 'ontouchstart' in window ||
+		(window.DocumentTouch && document instanceof window.DocumentTouch));
 
 		// @property android: Boolean
 		// `true` for any browser running on an Android platform.

@@ -107,30 +107,33 @@ L.Map.include(!zoomAnimated ? {} : {
 			L.DomUtil.addClass(this._mapPane, 'leaflet-zoom-anim');
 		}
 
-		// @event zoomanim: ZoomAnimEvent
-		// Fired on every frame of a zoom animation
-		this.fire('zoomanim', {
-			center: center,
-			zoom: zoom,
-			noUpdate: noUpdate
-		});
-
-		// Work around webkit not firing 'transitionend', see https://github.com/Leaflet/Leaflet/issues/3689, 2693
-		setTimeout(L.bind(this._onZoomTransitionEnd, this), 250);
+		L.Util.requestAnimFrame(function () {
+			this.fire('zoomanim', {
+				center: center,
+				zoom: zoom,
+				origin: origin,
+				scale: scale,
+				delta: delta,
+				backwards: backwards
+			});
+			// horrible hack to work around a Chrome bug https://github.com/Leaflet/Leaflet/issues/3689
+			setTimeout(L.bind(this._onZoomTransitionEnd, this), 250);
+		}, this);
 	},
 
 	_onZoomTransitionEnd: function () {
 		if (!this._animatingZoom) { return; }
 
-		L.DomUtil.removeClass(this._mapPane, 'leaflet-zoom-anim');
-
 		this._animatingZoom = false;
 
-		this._move(this._animateToCenter, this._animateToZoom);
+		L.DomUtil.removeClass(this._mapPane, 'leaflet-zoom-anim');
 
-		// This anim frame should prevent an obscure iOS webkit tile loading race condition.
 		L.Util.requestAnimFrame(function () {
-			this._moveEnd(true);
+			this._resetView(this._animateToCenter, this._animateToZoom, true, true);
+
+			if (L.Draggable) {
+				L.Draggable._disabled = false;
+			}
 		}, this);
 	}
 });

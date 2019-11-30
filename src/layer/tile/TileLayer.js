@@ -183,9 +183,94 @@ L.TileLayer = L.GridLayer.extend({
 
 	getTileSize: function () {
 		var map = this._map,
-		    tileSize = L.GridLayer.prototype.getTileSize.call(this),
-		    zoom = this._tileZoom + this.options.zoomOffset,
-		    zoomN = this.options.maxNativeZoom;
+		    bounds = map.getPixelBounds(),
+		    zoom = map.getZoom(),
+		    tileSize = this._getTileSize();
+
+		if (zoom > this.options.maxZoom || zoom < this.options.minZoom) {
+			return;
+		}
+
+		var tileBounds = L.bounds(
+		        bounds.min.divideBy(tileSize)._floor(),
+		        bounds.max.divideBy(tileSize)._floor());
+
+		this._addTilesFromCenterOut(tileBounds);
+
+		if (this.options.unloadInvisibleTiles || this.options.reuseTiles) {
+			this._removeOtherTiles(tileBounds);
+		}
+	},
+
+	_addTilesFromCenterOut: function (bounds) {
+		var queue = [],
+		    center = bounds.getCenter();
+
+		var j, i, point;
+
+		for (j = bounds.min.y; j <= bounds.max.y; j++) {
+			for (i = bounds.min.x; i <= bounds.max.x; i++) {
+				point = new L.Point(i, j);
+
+				if (this._tileShouldBeLoaded(point)) {
+					queue.push(point);
+				}
+			}
+		}
+
+		var tilesToLoad = queue.length;
+
+		if (tilesToLoad === 0) { return; }
+
+		// load tiles in order of their distance to center
+		queue.sort(function (a, b) {
+			return a.distanceTo(center) - b.distanceTo(center);
+		});
+
+		var fragment = document.createDocumentFragment();
+
+		// if its the first batch of tiles to load
+		if (!this._tilesToLoad) {
+			this.fire('loading');
+		}
+
+		this._tilesToLoad += tilesToLoad;
+
+		for (i = 0; i < tilesToLoad; i++) {
+			this._addTile(queue[i], fragment);
+		}
+
+		this._tileContainer.appendChild(fragment);
+	},
+
+	_tileShouldBeLoaded: function (tilePoint) {
+		if ((tilePoint.x + ':' + tilePoint.y) in this._tiles) {
+			return false; // already loaded
+		}
+
+		var options = this.options;
+
+		if (!options.continuousWorld) {
+			var limit = this._getWrapTileNum();
+
+			// don't load if exceeds world bounds
+			if ((options.noWrap && (tilePoint.x < 0 || tilePoint.x >= limit.x)) ||
+				tilePoint.y < 0 || tilePoint.y >= limit.y) { return false; }
+		}
+
+		if (options.bounds) {
+			var tileSize = this._getTileSize(),
+			    nwPoint = tilePoint.multiplyBy(tileSize),
+			    sePoint = nwPoint.add([tileSize, tileSize]),
+			    nw = this._map.unproject(nwPoint),
+			    se = this._map.unproject(sePoint);
+
+			// TODO temporary hack, will be removed after refactoring projections
+			// https://github.com/Leaflet/Leaflet/issues/1618
+			if (!options.continuousWorld && !options.noWrap) {
+				nw = nw.wrap();
+				se = se.wrap();
+			}
 
 		// increase tile size when overscaling
 		return zoomN !== null && zoom > zoomN ?
@@ -208,7 +293,47 @@ L.TileLayer = L.GridLayer.extend({
 
 		zoom += options.zoomOffset;
 
-		return options.maxNativeZoom !== null ? Math.min(zoom, options.maxNativeZoom) : zoom;
+		return options.maxNativeZoom ? Math.min(zoom, options.maxNativeZoom) : zoom;
+	},
+
+	_getTilePos: function (tilePoint) {
+		var origin = this._map.getPixelOrigin(),
+		    tileSize = this._getTileSize();
+
+		return tilePoint.multiplyBy(tileSize).subtract(origin);
+	},
+
+	// image-specific code (override to implement e.g. Canvas or SVG tile layer)
+
+	getTileUrl: function (tilePoint) {
+		return L.Util.template(this._url, L.extend({
+			s: this._getSubdomain(tilePoint),
+			z: tilePoint.z,
+			x: tilePoint.x,
+			y: tilePoint.y
+		}, this.options));
+	},
+
+	_getWrapTileNum: function () {
+		var crs = this._map.options.crs,
+		    size = crs.getSize(this._map.getZoom());
+		return size.divideBy(this._getTileSize())._floor();
+	},
+
+	_adjustTilePoint: function (tilePoint) {
+
+		var limit = this._getWrapTileNum();
+
+		// wrap tile coordinates
+		if (!this.options.continuousWorld && !this.options.noWrap) {
+			tilePoint.x = ((tilePoint.x % limit.x) + limit.x) % limit.x;
+		}
+
+		if (this.options.tms) {
+			tilePoint.y = limit.y - tilePoint.y - 1;
+		}
+
+		tilePoint.z = this._getZoomForUrl();
 	},
 
 	_getSubdomain: function (tilePoint) {
