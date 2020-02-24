@@ -17,13 +17,61 @@ if (L.DomUtil.TRANSITION) {
 		// zoom transitions run with the same duration for all layers, so if one of transitionend events
 		// happens after starting zoom animation (propagating to the map pane), we know that it ended globally
 		if (this._zoomAnimated) {
-			L.DomEvent.on(this._mapPane, L.DomUtil.TRANSITION_END, this._catchTransitionEnd, this);
+
+			this._createAnimProxy();
+
+			L.DomEvent.on(this._proxy, L.DomUtil.TRANSITION_END, this._catchTransitionEnd, this);
 		}
 	});
 }
 
+<<<<<<< HEAD
 L.Map.include(!L.DomUtil.TRANSITION ? {} : {
 
+=======
+L.Map.include(!zoomAnimated ? {} : {
+
+	_createAnimProxy: function () {
+<<<<<<< HEAD
+
+=======
+		
+>>>>>>> origin/prune2
+		var proxy = this._proxy = L.DomUtil.create('div', 'leaflet-proxy leaflet-zoom-animated');
+		this._panes.mapPane.appendChild(proxy);
+
+		this.on('zoomanim', function (e) {
+<<<<<<< HEAD
+			var prop = L.DomUtil.TRANSFORM,
+				transform = proxy.style[prop];
+
+			L.DomUtil.setTransform(proxy, this.project(e.center, e.zoom), this.getZoomScale(e.zoom, 1));
+
+			// workaround for case when transform is the same and so transitionend event is not fired
+			if (transform === proxy.style[prop] & this._animatingZoom) {
+				this._onZoomTransitionEnd();
+			}
+		}, this);
+
+<<<<<<< HEAD
+=======
+=======
+			L.DomUtil.setTransform(proxy, this.project(e.center, e.zoom), this.getZoomScale(e.zoom, 1));
+		}, this);
+
+>>>>>>> origin/prune2
+		this.on('load moveend', function () {
+			var c = this.getCenter(),
+				z = this.getZoom();
+			L.DomUtil.setTransform(proxy, this.project(c, z), this.getZoomScale(z, 1));
+		}, this);
+	},
+
+<<<<<<< HEAD
+>>>>>>> master
+>>>>>>> upstream/master-docs-merge
+=======
+>>>>>>> origin/prune2
 	_catchTransitionEnd: function (e) {
 		if (this._animatingZoom && e.propertyName.indexOf('transform') >= 0) {
 			this._onZoomTransitionEnd();
@@ -79,6 +127,7 @@ L.Map.include(!L.DomUtil.TRANSITION ? {} : {
 			L.Draggable._disabled = true;
 		}
 
+<<<<<<< HEAD
 		L.Util.requestAnimFrame(function () {
 			this.fire('zoomanim', {
 				center: center,
@@ -91,8 +140,27 @@ L.Map.include(!L.DomUtil.TRANSITION ? {} : {
 			// horrible hack to work around a Chrome bug https://github.com/Leaflet/Leaflet/issues/3689
 			setTimeout(L.bind(this._onZoomTransitionEnd, this), 250);
 		}, this);
+=======
+		this.fire('zoomanim', {
+			center: center,
+			zoom: zoom,
+			scale: this.getZoomScale(zoom),
+			origin: this.latLngToLayerPoint(center),
+			offset: this._getCenterOffset(center).multiplyBy(-1)
+		});
+>>>>>>> origin/pyramid
 	},
 
+	_stopAnimatedZoom: function () {
+
+		var transform = L.DomUtil.getTransform(this._proxy);
+
+		//Replace the animation end variables with the current zoom/center
+		this._animateToZoom = this.getScaleZoom(transform.scale, 1);
+		this._animateToCenter = this.unproject(transform.offset, this._animateToZoom);
+
+		this._onZoomTransitionEnd();
+	},
 	_onZoomTransitionEnd: function () {
 		if (!this._animatingZoom) { return; }
 

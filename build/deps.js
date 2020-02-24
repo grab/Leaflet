@@ -6,19 +6,22 @@ var deps = {
 		      'core/Events.js',
 		      'core/Browser.js',
 		      'geometry/Point.js',
+		      'geometry/Coordinate.js',
 		      'geometry/Bounds.js',
 		      'geometry/Transformation.js',
 		      'dom/DomUtil.js',
 		      'geo/LatLng.js',
 		      'geo/LatLngBounds.js',
-		      'geo/projection/Projection.js',
-		      'geo/projection/Projection.SphericalMercator.js',
 		      'geo/projection/Projection.LonLat.js',
+		      'geo/projection/Projection.SphericalMercator.js',
 		      'geo/crs/CRS.js',
 		      'geo/crs/CRS.Simple.js',
+		      'geo/crs/CRS.Earth.js',
 		      'geo/crs/CRS.EPSG3857.js',
 		      'geo/crs/CRS.EPSG4326.js',
-		      'map/Map.js'],
+		      'map/Map.js',
+		      'layer/Layer.js'
+		      ],
 		desc: 'The core of the library, including OOP, events, DOM facilities, basic units, projections (EPSG:3857 and EPSG:4326) and the base Map class.'
 	},
 
@@ -29,21 +32,21 @@ var deps = {
 		heading: 'Additional projections'
 	},
 
+	GridLayer: {
+		src: ['layer/tile/GridLayer.js'],
+		desc: 'Used as base class for grid-like layers like TileLayer.',
+		heading: 'Layers'
+	},
+
 	TileLayer: {
 		src: ['layer/tile/TileLayer.js'],
 		desc: 'The base class for displaying tile layers on the map.',
-		heading: 'Layers'
+		deps: ['GridLayer']
 	},
 
 	TileLayerWMS: {
 		src: ['layer/tile/TileLayer.WMS.js'],
 		desc: 'WMS tile layer.',
-		deps: ['TileLayer']
-	},
-
-	TileLayerCanvas: {
-		src: ['layer/tile/TileLayer.Canvas.js'],
-		desc: 'Tile layer made from canvases (for custom drawing purposes).',
 		deps: ['TileLayer']
 	},
 
@@ -66,10 +69,24 @@ var deps = {
 	},
 
 	Popup: {
-		src: ['layer/Popup.js',
-		      'layer/marker/Marker.Popup.js'],
+		src: [
+			'layer/PopupBase.js',
+			'layer/Popup.js',
+			'layer/Layer.Popup.js',
+			'layer/marker/Marker.Popup.js'
+		],
 		deps: ['Marker'],
 		desc: 'Used to display the map popup (used mostly for binding HTML data to markers and paths on click).'
+	},
+
+	Label: {
+		src: [
+			'layer/Label.js',
+			'layer/Layer.Label.js',
+			'layer/marker/Marker.Label.js'
+		],
+		deps: ['Popup', 'Marker'],
+		desc: 'Used to display the map label (used mostly for binding short descriptions to markers and paths on mouseover).'
 	},
 
 	LayerGroup: {
@@ -83,23 +100,14 @@ var deps = {
 		desc: 'Extends LayerGroup with mouse events and bindPopup method shared between layers.'
 	},
 
+
 	Path: {
-		src: ['layer/vector/Path.js',
-		      'layer/vector/Path.SVG.js',
-		      'layer/vector/Path.Popup.js'],
-		desc: 'Vector rendering core (SVG-powered), enables overlaying the map with SVG paths.',
+		src: [
+			'layer/vector/Renderer.js',
+			'layer/vector/Path.js'
+		],
+		desc: 'Vector rendering core.',
 		heading: 'Vector layers'
-	},
-
-	PathVML: {
-		src: ['layer/vector/Path.VML.js'],
-		desc: 'VML fallback for vector rendering core (IE 6-8).'
-	},
-
-	PathCanvas: {
-		src: ['layer/vector/canvas/Path.Canvas.js'],
-		deps: ['Path', 'Polyline', 'Polygon', 'Circle'],
-		desc: 'Canvas fallback for vector rendering core (makes it work on Android 2+).'
 	},
 
 	Polyline: {
@@ -116,42 +124,45 @@ var deps = {
 		desc: 'Polygon overlays.'
 	},
 
-	MultiPoly: {
-		src: ['layer/vector/MultiPoly.js'],
-		deps: ['FeatureGroup', 'Polyline', 'Polygon'],
-		desc: 'MultiPolygon and MultyPolyline layers.'
-	},
-
 	Rectangle: {
 		src: ['layer/vector/Rectangle.js'],
 		deps: ['Polygon'],
 		desc: ['Rectangle overlays.']
 	},
 
-	Circle: {
-		src: ['layer/vector/Circle.js'],
-		deps: ['Path'],
-		desc: 'Circle overlays (with radius in meters).'
-	},
-
 	CircleMarker: {
 		src: ['layer/vector/CircleMarker.js'],
-		deps: ['Circle'],
+		deps: ['Path'],
 		desc: 'Circle overlays with a constant pixel radius.'
 	},
 
-	VectorsCanvas: {
-		src: ['layer/vector/canvas/Polyline.Canvas.js',
-		      'layer/vector/canvas/Polygon.Canvas.js',
-		      'layer/vector/canvas/Circle.Canvas.js',
-		      'layer/vector/canvas/CircleMarker.Canvas.js'],
-		deps: ['PathCanvas', 'Polyline', 'Polygon', 'Circle', 'CircleMarker'],
-		desc: 'Canvas fallback for vector layers (polygons, polylines, circles, circlemarkers)'
+	Circle: {
+		src: ['layer/vector/Circle.js'],
+		deps: ['CircleMarker'],
+		desc: 'Circle overlays (with radius in meters).'
+	},
+
+	SVG: {
+		src: ['layer/vector/SVG.js'],
+		deps: ['Path'],
+		desc: 'SVG backend for vector layers.'
+	},
+
+	VML: {
+		src: ['layer/vector/SVG.VML.js'],
+		deps: ['SVG'],
+		desc: 'VML fallback for vector layers in IE7-8.'
+	},
+
+	Canvas: {
+		src: ['layer/vector/Canvas.js'],
+		deps: ['CircleMarker', 'Path', 'Polygon', 'Polyline'],
+		desc: 'Canvas backend for vector layers.'
 	},
 
 	GeoJSON: {
 		src: ['layer/GeoJSON.js'],
-		deps: ['CircleMarker', 'Marker', 'MultiPoly', 'FeatureGroup'],
+		deps: ['Polygon', 'Circle', 'CircleMarker', 'Marker', 'FeatureGroup'],
 		desc: 'GeoJSON layer, parses the data and adds corresponding layers above.'
 	},
 
@@ -178,20 +189,28 @@ var deps = {
 		      'dom/DomEvent.DoubleTap.js',
 		      'dom/DomEvent.Pointer.js',
 		      'core/Handler.js',
+		      'map/handler/Map.TouchGestures.js',
 		      'map/handler/Map.TouchZoom.js',
+		      'map/handler/Map.TouchRotate.js',
 		      'map/handler/Map.Tap.js'],
 		deps: ['AnimationZoom'],
-		desc: 'Enables smooth touch zoom / tap / longhold / doubletap on iOS, IE10, Android.'
+		desc: 'Enables smooth touch zoom / rotate / tap / longhold / doubletap on iOS, IE10, Android.'
 	},
 
 	BoxZoom: {
 		src: ['map/handler/Map.BoxZoom.js'],
+		deps: ['MouseZoom'],
 		desc: 'Enables zooming to bounding box by shift-dragging the map.'
 	},
 
 	Keyboard: {
 		src: ['map/handler/Map.Keyboard.js'],
 		desc: 'Enables keyboard pan/zoom when the map is focused.'
+	},
+
+	CompassBearing: {
+		src: ['map/handler/Map.CompassBearing.js'],
+		desc: 'Enables rotating the map based on the device compass'
 	},
 
 	MarkerDrag: {
@@ -235,14 +254,15 @@ var deps = {
 		desc: 'Core panning animation support.'
 	},
 
-	AnimationTimer: {
-		src: ['dom/PosAnimation.Timer.js'],
-		deps: ['AnimationPan'],
-		desc: 'Timer-based pan animation fallback for browsers that don\'t support CSS3 transitions.'
-	},
-
 	AnimationZoom: {
-		src: ['map/anim/Map.ZoomAnimation.js', 'layer/tile/TileLayer.Anim.js'],
+		src: [
+			'map/anim/Map.ZoomAnimation.js',
+<<<<<<< HEAD
+			'map/anim/Map.FlyTo.js'
+=======
+			'map/anim/Map.ZoomPan.js'
+>>>>>>> origin/pyramid
+			],
 		deps: ['AnimationPan'],
 		desc: 'Smooth zooming animation. Works only on browsers that support CSS3 Transitions.'
 	},

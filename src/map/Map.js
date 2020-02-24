@@ -17,12 +17,23 @@ L.Map = L.Class.extend({
 
 		fadeAnimation: L.DomUtil.TRANSITION && !L.Browser.android23,
 		trackResize: true,
+<<<<<<< HEAD
 		markerZoomAnimation: L.DomUtil.TRANSITION && L.Browser.any3d
+=======
+		markerZoomAnimation: true,
+		maxBoundsViscosity: 0.0,
+		bearing: 0,
+		rotate: false
+>>>>>>> origin/rotate
 	},
 
 	initialize: function (id, options) { // (HTMLElement or String, Object)
 		options = L.setOptions(this, options);
 
+<<<<<<< HEAD
+=======
+		if (options.bearing) { this._bearing = options.bearing; }
+>>>>>>> origin/rotate
 
 		this._initContainer(id);
 		this._initLayout();
@@ -98,7 +109,7 @@ L.Map = L.Class.extend({
 
 		    zoom = this.getBoundsZoom(bounds, false, paddingTL.add(paddingBR));
 
-		zoom = (options.maxZoom) ? Math.min(options.maxZoom, zoom) : zoom;
+		zoom = (typeof options.maxZoom === 'number') ? Math.min(options.maxZoom, zoom) : zoom;
 
 		var paddingOffset = paddingBR.subtract(paddingTL).divideBy(2),
 
@@ -214,8 +225,12 @@ L.Map = L.Class.extend({
 	hasLayer: function (layer) {
 		if (!layer) { return false; }
 
+<<<<<<< HEAD
 		return (L.stamp(layer) in this._layers);
 	},
+=======
+		if (this.options.crs.equals(center, newCenter)) { return this; }
+>>>>>>> origin/move-latlng-equals-to-crs
 
 	eachLayer: function (method, context) {
 		for (var i in this._layers) {
@@ -267,6 +282,25 @@ L.Map = L.Class.extend({
 		});
 	},
 
+	stop: function () {
+
+		//zoomPan
+		L.Util.cancelAnimFrame(this._zoomPanFrame);
+		//TODO: Need to fire zoomend if this was what was going on
+
+		//PosAnimation
+		if (this._panAnim && this._panAnim._inProgress) {
+			this._panAnim.stop();
+			return;
+		}
+
+		//zoomAnimation
+		if (this._animatingZoom) {
+			this._stopAnimatedZoom();
+			return;
+		}
+	},
+
 	// TODO handler.addTo
 	addHandler: function (name, HandlerClass) {
 		if (!HandlerClass) { return this; }
@@ -287,7 +321,7 @@ L.Map = L.Class.extend({
 			this.fire('unload');
 		}
 
-		this._initEvents('off');
+		this._initEvents(true);
 
 		try {
 			// throws error in IE6-8
@@ -389,9 +423,20 @@ L.Map = L.Class.extend({
 
 	getPixelOrigin: function () {
 		this._checkIfLoaded();
-		return this._initialTopLeftPoint;
+		return this._pixelOrigin;
 	},
 
+<<<<<<< HEAD
+=======
+	getPixelWorldBounds: function (zoom) {
+		return this.options.crs.getProjectedBounds(zoom === undefined ? this.getZoom() : zoom);
+	},
+
+	getPane: function (pane) {
+		return typeof pane === 'string' ? this._panes[pane] : pane;
+	},
+
+>>>>>>> origin/pyramid
 	getPanes: function () {
 		return this._panes;
 	},
@@ -403,13 +448,15 @@ L.Map = L.Class.extend({
 
 	// TODO replace with universal implementation after refactoring projections
 
-	getZoomScale: function (toZoom) {
+	getZoomScale: function (toZoom, fromZoom) {
 		var crs = this.options.crs;
-		return crs.scale(toZoom) / crs.scale(this._zoom);
+		fromZoom = fromZoom === undefined ? this._zoom : fromZoom;
+		return crs.scale(toZoom) / crs.scale(fromZoom);
 	},
 
-	getScaleZoom: function (scale) {
-		return this._zoom + (Math.log(scale) / Math.LN2);
+	getScaleZoom: function (scale, fromZoom) {
+		fromZoom = fromZoom === undefined ? this._zoom : fromZoom;
+		return fromZoom + (Math.log(scale) / Math.LN2);
 	},
 
 
@@ -436,11 +483,24 @@ L.Map = L.Class.extend({
 	},
 
 	containerPointToLayerPoint: function (point) { // (Point)
-		return L.point(point).subtract(this._getMapPanePos());
+// 		return L.point(point).subtract(this._getMapPanePos());
+// 		return L.point(point).subtract(this._getMapPanePos()).rotateFrom(-this._bearing, this._getRotatePanePos());
+
+		return L.point(point)
+			.subtract(this._getMapPanePos())
+			.rotateFrom(-this._bearing, this._getRotatePanePos())
+			.subtract(this._getRotatePanePos())
+			;
 	},
 
 	layerPointToContainerPoint: function (point) { // (Point)
-		return L.point(point).add(this._getMapPanePos());
+// 		return L.point(point).add(this._getMapPanePos());
+// 		return L.point(point).add(this._getMapPanePos()).rotateFrom(this._bearing, this._getRotatePanePos());
+		return L.point(point)
+			.add(this._getRotatePanePos())
+			.rotateFrom(this._bearing, this._getRotatePanePos())
+			.add(this._getMapPanePos())
+			;
 	},
 
 	containerPointToLatLng: function (point) {
@@ -462,6 +522,55 @@ L.Map = L.Class.extend({
 
 	mouseEventToLatLng: function (e) { // (MouseEvent)
 		return this.layerPointToLatLng(this.mouseEventToLayerPoint(e));
+	},
+
+
+	// Rotation methods
+	// setBearing will work with just the 'theta' parameter. unfinished is
+	//   completely optional.
+	// Set theta to the desired bearing, in degrees.
+	// Set unfinished to true in order to not fire the 'rotateend' event. This is useful
+	//   when a lot of rotations are going to happen in a short period of time, e.g.
+	//   a touchscreen rotation or dragging a rotation slider.
+	// Make sure that a final call with unfinished=false is sent at the end of such
+	//   a series of rotations.
+	setBearing: function(theta, unfinished) {
+		if (!L.Browser.any3d || !this.options.rotate) { return; }
+
+		if (!this._rotating) {
+			this.fire('rotatestart');
+		}
+
+		var rotatePanePos = this._getRotatePanePos();
+		var halfSize = this.getSize().divideBy(2);
+		this._pivot = this._getMapPanePos().clone().multiplyBy(-1).add(halfSize);
+
+		rotatePanePos = rotatePanePos.rotateFrom(-this._bearing, this._pivot);
+
+		this._bearing = theta * L.DomUtil.DEG_TO_RAD;
+		this._rotatePanePos = rotatePanePos.rotateFrom(this._bearing, this._pivot);
+
+		L.DomUtil.setPosition(this._rotatePane, this._rotatePanePos, this._bearing, this._rotatePanePos);
+
+		this.fire('rotate');
+		// We don't want to fire the rotate event on every frame of a touchscreen
+		//   gesture
+		if (unfinished) {
+			this._rotating = true;
+		} else {
+			this.fire('rotateend');
+			this._rotating = false;
+		}
+	},
+
+	getBearing: function() {
+		return (this._bearing || 0) * L.DomUtil.RAD_TO_DEG;
+	},
+
+	// Some code will need to know if the map will fire a 'rotateend' event in the
+	//   near future, to account for animations and such
+	isRotating: function() {
+		return this._rotating;
 	},
 
 
@@ -504,8 +613,10 @@ L.Map = L.Class.extend({
 	_initPanes: function () {
 		var panes = this._panes = {};
 
+<<<<<<< HEAD
 		this._mapPane = panes.mapPane = this._createPane('leaflet-map-pane', this._container);
 
+<<<<<<< HEAD
 		this._tilePane = panes.tilePane = this._createPane('leaflet-tile-pane', this._mapPane);
 		panes.objectsPane = this._createPane('leaflet-objects-pane', this._mapPane);
 		panes.shadowPane = this._createPane('leaflet-shadow-pane');
@@ -514,6 +625,25 @@ L.Map = L.Class.extend({
 		panes.popupPane = this._createPane('leaflet-popup-pane');
 
 		var zoomHide = ' leaflet-zoom-hide';
+=======
+		this._pivot = this.getSize().divideBy(2);
+		this._rotatePane = this.createPane('rotatePane', this._mapPane);
+		L.DomUtil.setPosition(this._rotatePane, new L.Point(0, 0), this._bearing, this._pivot);
+
+		this.createPane('tilePane',    this._rotatePane);
+		this.createPane('shadowPane',  this._rotatePane);
+		this.createPane('overlayPane', this._rotatePane);
+		this.createPane('markerPane',  this._rotatePane);
+		this.createPane('popupPane',   this._rotatePane);
+>>>>>>> origin/rotate
+=======
+		this.createPane('tilePane');
+		this.createPane('shadowPane');
+		this.createPane('overlayPane');
+		this.createPane('markerPane');
+		this.createPane('labelPane');
+		this.createPane('popupPane');
+>>>>>>> origin/label
 
 		if (!this.options.markerZoomAnimation) {
 			L.DomUtil.addClass(panes.markerPane, zoomHide);
@@ -556,15 +686,15 @@ L.Map = L.Class.extend({
 		this._zoom = zoom;
 		this._initialCenter = center;
 
-		this._initialTopLeftPoint = this._getNewTopLeftPoint(center);
-
 		if (!preserveMapOffset) {
 			L.DomUtil.setPosition(this._mapPane, new L.Point(0, 0));
-		} else {
-			this._initialTopLeftPoint._add(this._getMapPanePos());
 		}
 
+<<<<<<< HEAD
 		this._tileLayersToLoad = this._tileLayersNum;
+=======
+		this._pixelOrigin = this._getNewPixelOrigin(center);
+>>>>>>> origin/pyramid
 
 		var loading = !this._loaded;
 		this._loaded = true;
@@ -631,13 +761,14 @@ L.Map = L.Class.extend({
 		}
 	},
 
-	// map events
+	// DOM event handling
 
-	_initEvents: function (onOff) {
+	_initEvents: function (remove) {
 		if (!L.DomEvent) { return; }
 
-		onOff = onOff || 'on';
+		this._targets = {};
 
+<<<<<<< HEAD
 		L.DomEvent[onOff](this._container, 'click', this._onMouseClick, this);
 
 		var events = ['dblclick', 'mousedown', 'mouseup', 'mouseenter',
@@ -647,6 +778,12 @@ L.Map = L.Class.extend({
 		for (i = 0, len = events.length; i < len; i++) {
 			L.DomEvent[onOff](this._container, events[i], this._fireMouseEvent, this);
 		}
+=======
+		var onOff = remove ? 'off' : 'on';
+
+		L.DomEvent[onOff](this._container, 'click dblclick mousedown mouseup ' +
+			'mouseover mouseout mousemove contextmenu keypress', this._handleDOMEvent, this);
+>>>>>>> origin/drag-cancel-click
 
 		if (this.options.trackResize) {
 			L.DomEvent[onOff](window, 'resize', this._onResize, this);
@@ -659,6 +796,7 @@ L.Map = L.Class.extend({
 		        function () { this.invalidateSize({debounceMoveend: true}); }, this, false, this._container);
 	},
 
+<<<<<<< HEAD
 	_onMouseClick: function (e) {
 		if (!this._loaded || (!e._simulated &&
 		        ((this.dragging && this.dragging.moved()) ||
@@ -677,11 +815,35 @@ L.Map = L.Class.extend({
 		type = (type === 'mouseenter' ? 'mouseover' : (type === 'mouseleave' ? 'mouseout' : type));
 
 		if (!this.hasEventListeners(type)) { return; }
+=======
+	_handleDOMEvent: function (e) {
+		if (!this._loaded || L.DomEvent._skipped(e)) { return; }
+
+		// find the layer the event is propagating from
+		var target = this._targets[L.stamp(e.target || e.srcElement)],
+			type = e.type === 'keypress' && e.keyCode === 13 ? 'click' : e.type;
+
+		// special case for map mouseover/mouseout events so that they're actually mouseenter/mouseleave
+		if (!target && (type === 'mouseover' || type === 'mouseout') &&
+				!L.DomEvent._checkMouse(this._container, e)) { return; }
+
+		// prevents outline when clicking on keyboard-focusable element
+		if (type === 'mousedown') {
+			L.DomUtil.preventOutline(e.target || e.srcElement);
+		}
+
+		this._fireDOMEvent(target || this, e, type);
+	},
+
+	_fireDOMEvent: function (target, e, type) {
+		if (!target.listens(type, true) && (type !== 'click' || !target.listens('preclick', true))) { return; }
+>>>>>>> origin/drag-cancel-click
 
 		if (type === 'contextmenu') {
 			L.DomEvent.preventDefault(e);
 		}
 
+<<<<<<< HEAD
 		var containerPoint = this.mouseEventToContainerPoint(e),
 		    layerPoint = this.containerPointToLayerPoint(containerPoint),
 		    latlng = this.layerPointToLatLng(layerPoint);
@@ -699,6 +861,21 @@ L.Map = L.Class.extend({
 		if (this._tileLayersNum && !this._tileLayersToLoad) {
 			this.fire('tilelayersload');
 		}
+=======
+		var data = {
+			originalEvent: e
+		};
+		if (e.type !== 'keypress') {
+			// TODO latlng isn't used, wrong latlng for markers
+			data.containerPoint = this.mouseEventToContainerPoint(e);
+			data.layerPoint = this.containerPointToLayerPoint(data.containerPoint);
+			data.latlng = this.layerPointToLatLng(data.layerPoint);
+		}
+		if (type === 'click') {
+			target.fire('preclick', data, true);
+		}
+		target.fire(type, data, true);
+>>>>>>> origin/drag-cancel-click
 	},
 
 	_clearHandlers: function () {
@@ -725,7 +902,11 @@ L.Map = L.Class.extend({
 	// private methods for getting map state
 
 	_getMapPanePos: function () {
-		return L.DomUtil.getPosition(this._mapPane);
+		return L.DomUtil.getPosition(this._mapPane) || new L.Point(0, 0);
+	},
+
+	_getRotatePanePos: function () {
+		return this._rotatePanePos || new L.Point(0, 0);
 	},
 
 	_moved: function () {
@@ -737,15 +918,36 @@ L.Map = L.Class.extend({
 		return this.getPixelOrigin().subtract(this._getMapPanePos());
 	},
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 	_getNewTopLeftPoint: function (center, zoom) {
 		var viewHalf = this.getSize()._divideBy(2);
 		// TODO round on display, not calculation to increase precision?
 		return this.project(center, zoom)._subtract(viewHalf)._round();
+=======
+	_getNewPixelOrigin: function (center, zoom) {
+
+		var viewHalf = this.getSize()._divideBy(2);
+
+		return this.project(center, zoom)
+			.rotate(this._bearing)
+			._subtract(viewHalf)
+			._add(this._getMapPanePos())
+			.add(this._getRotatePanePos())
+			.rotate(-this._bearing)
+			._round();
+>>>>>>> origin/rotate
+=======
+	_getNewPixelOrigin: function (center, zoom) {
+		var viewHalf = this.getSize()._divideBy(2);
+		// TODO round on display, not calculation to increase precision?
+		return this.project(center, zoom)._subtract(viewHalf)._add(this._getMapPanePos())._round();
+>>>>>>> origin/pyramid
 	},
 
-	_latLngToNewLayerPoint: function (latlng, newZoom, newCenter) {
-		var topLeft = this._getNewTopLeftPoint(newCenter, newZoom).add(this._getMapPanePos());
-		return this.project(latlng, newZoom)._subtract(topLeft);
+	_latLngToNewLayerPoint: function (latlng, zoom, center) {
+		var topLeft = this._getNewPixelOrigin(center, zoom);
+		return this.project(latlng, zoom)._subtract(topLeft);
 	},
 
 	// layer point of the current center

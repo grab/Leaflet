@@ -1,0 +1,6 @@
+source: docs
+
+markdown: kramdown
+
+kramdown:
+  entity_output: as_input

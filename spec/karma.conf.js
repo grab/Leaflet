@@ -4,12 +4,12 @@ module.exports = function (config) {
 	var libSources = require(__dirname+'/../build/build.js').getFiles();
 
 	var files = [
-		"spec/before.js",
 		"spec/sinon.js",
 		"spec/expect.js"
 	].concat(libSources, [
 		"spec/after.js",
 		"node_modules/happen/happen.js",
+		"node_modules/prosthetic-hand/dist/prosthetic-hand.js",
 		"spec/suites/SpecHelper.js",
 		"spec/suites/**/*.js",
 		{pattern: "dist/images/*.png", included: false}
@@ -19,7 +19,17 @@ module.exports = function (config) {
 		// base path, that will be used to resolve files and exclude
 		basePath: '../',
 
-		plugins: ['karma-mocha', 'karma-phantomjs-launcher', 'karma-chrome-launcher'],
+		plugins: [
+			'karma-mocha',
+			'karma-coverage',
+			'karma-phantomjs-launcher',
+<<<<<<< HEAD
+			'karma-slimerjs-launcher',
+=======
+>>>>>>> origin/pyramid
+			'karma-chrome-launcher',
+			'karma-safari-launcher',
+			'karma-firefox-launcher'],
 
 		// frameworks to use
 		frameworks: ['mocha'],
@@ -57,6 +67,10 @@ module.exports = function (config) {
 
 		// If browser does not capture in given timeout [ms], kill it
 		captureTimeout: 5000,
+
+		// Workaround for PhantomJS random DISCONNECTED error
+		browserDisconnectTimeout: 10000, // default 2000
+		browserDisconnectTolerance: 1, // default 0
 
 		// Continuous Integration mode
 		// if true, it capture browsers, run tests and exit

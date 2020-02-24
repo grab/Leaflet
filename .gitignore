@@ -7,9 +7,12 @@ tmp/**/*
 *.sublime-*
 _site
 dist/*.js
+dist/*.map
+dist/reference.html
 coverage/
 *.js.html
 index.html
 .mailmap
 bower.json
 component.json
+debug/local/

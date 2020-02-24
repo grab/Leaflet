@@ -3,16 +3,17 @@
  */
 
 L.Map.mergeOptions({
-	touchZoom: L.Browser.touch && !L.Browser.android23,
-	bounceAtZoomLimits: true
+	touchZoom: L.Browser.touch && !L.Browser.android23
 });
 
 L.Map.TouchZoom = L.Handler.extend({
 	addHooks: function () {
-		L.DomEvent.on(this._map._container, 'touchstart', this._onTouchStart, this);
+		this._map.touchGestures.enable();
+		this._map.touchGestures.zoom = true;
 	},
 
 	removeHooks: function () {
+<<<<<<< HEAD
 		L.DomEvent.off(this._map._container, 'touchstart', this._onTouchStart, this);
 	},
 
@@ -33,9 +34,7 @@ L.Map.TouchZoom = L.Handler.extend({
 
 		this._centerOffset = viewCenter.subtract(this._startCenter);
 
-		if (map._panAnim) {
-			map._panAnim.stop();
-		}
+		map.stop();
 
 		L.DomEvent
 		    .on(document, 'touchmove', this._onTouchMove, this)
@@ -108,12 +107,17 @@ L.Map.TouchZoom = L.Handler.extend({
 		    center = map.layerPointToLatLng(origin),
 
 		    oldZoom = map.getZoom(),
+<<<<<<< HEAD
 		    floatZoomDelta = map.getScaleZoom(this._scale) - oldZoom,
 		    roundZoomDelta = (floatZoomDelta > 0 ?
 		            Math.ceil(floatZoomDelta) : Math.floor(floatZoomDelta)),
 
 		    zoom = map._limitZoom(oldZoom + roundZoomDelta),
 		    scale = map.getZoomScale(zoom) / this._scale;
+=======
+		    zoomDelta = this._zoom - oldZoom,
+		    finalZoom = map._limitZoom(zoomDelta > 0 ? Math.ceil(this._zoom) : Math.floor(this._zoom));
+>>>>>>> origin/pyramid
 
 		map._animateZoom(center, zoom, origin, scale);
 	},
@@ -121,6 +125,9 @@ L.Map.TouchZoom = L.Handler.extend({
 	_getScaleOrigin: function () {
 		var centerOffset = this._centerOffset.subtract(this._delta).divideBy(this._scale);
 		return this._startCenter.add(centerOffset);
+=======
+		this._map.touchGestures.zoom = false;
+>>>>>>> origin/rotate
 	}
 });
 

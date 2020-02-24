@@ -26,7 +26,7 @@ describe('DomEvent', function () {
 	describe('#addListener', function () {
 		it('adds a listener and calls it on event', function () {
 			var listener1 = sinon.spy(),
-				listener2 = sinon.spy();
+			    listener2 = sinon.spy();
 
 			L.DomEvent.addListener(el, 'click', listener1);
 			L.DomEvent.addListener(el, 'click', listener2);
@@ -39,7 +39,7 @@ describe('DomEvent', function () {
 
 		it('binds "this" to the given context', function () {
 			var obj = {foo: 'bar'},
-				result;
+			    result;
 
 			L.DomEvent.addListener(el, 'click', function () {
 				result = this;
@@ -78,7 +78,7 @@ describe('DomEvent', function () {
 	describe('#stopPropagation', function () {
 		it('stops propagation of the given event', function () {
 			var child = document.createElement('div'),
-				listener = sinon.spy();
+			    listener = sinon.spy();
 
 			el.appendChild(child);
 
@@ -99,4 +99,46 @@ describe('DomEvent', function () {
 			expect(simulateClick(el)).to.be(false);
 		});
 	});
+
+	describe('#once', function () {
+
+		it('adds a listener and calls it once', function () {
+			var listener = sinon.spy();
+
+			L.DomEvent.once(el, 'click', listener);
+
+			simulateClick(el);
+
+			expect(listener.callCount).to.eql(1);
+
+			simulateClick(el);
+
+			expect(listener.callCount).to.eql(1);
+		});
+
+		it('binds "this" to the given context', function () {
+			var obj = {foo: 'bar'},
+				result;
+
+			L.DomEvent.once(el, 'click', function () {
+				result = this;
+			}, obj);
+
+			simulateClick(el);
+
+			expect(result).to.eql(obj);
+		});
+
+		it('passes an event object to the listener', function () {
+			var type;
+
+			L.DomEvent.once(el, 'click', function (e) {
+				type = e && e.type;
+			});
+			simulateClick(el);
+
+			expect(type).to.eql('click');
+		});
+	});
+
 });

@@ -1,103 +1,207 @@
 /*
- * L.DomEvent contains functions for working with DOM events.
+ * @namespace DomEvent
+ * Utility functions to work with the [DOM events](https://developer.mozilla.org/docs/Web/API/Event), used by Leaflet internally.
  */
 
+// Inspired by John Resig, Dean Edwards and YUI addEvent implementations.
+
+
+
+var eventsKey = '_leaflet_events';
+
 L.DomEvent = {
-	/* inspired by John Resig, Dean Edwards and YUI addEvent implementations */
-	addListener: function (obj, type, fn, context) { // (HTMLElement, String, Function[, Object])
 
-		var id = L.stamp(fn),
-		    key = '_leaflet_' + type + id,
-		    handler, originalHandler, newType;
+<<<<<<< HEAD
+	// @function on(el: HTMLElement, types: String, fn: Function, context?: Object): this
+	// Adds a listener function (`fn`) to a particular DOM event type of the
+	// element `el`. You can optionally specify the context of the listener
+	// (object the `this` keyword will point to). You can also pass several
+	// space-separated types (e.g. `'click dblclick'`).
 
-		if (obj[key]) { return this; }
+	// @alternative
+	// @function on(el: HTMLElement, eventMap: Object, context?: Object): this
+	// Adds a set of type/listener pairs, e.g. `{click: onClick, mousemove: onMouseMove}`
+	on: function (obj, types, fn, context) {
+=======
+	on: function (obj, types, fn, context, capture) {
+>>>>>>> origin/drag-cancel-click
 
-		handler = function (e) {
-			return fn.call(context || obj, e || L.DomEvent._getEvent());
+		if (typeof types === 'object') {
+			for (var type in types) {
+				this._on(obj, type, types[type], fn);
+			}
+		} else {
+			types = L.Util.splitWords(types);
+
+			for (var i = 0, len = types.length; i < len; i++) {
+				this._on(obj, types[i], fn, context, capture);
+			}
+		}
+
+		return this;
+	},
+
+<<<<<<< HEAD
+	// @function off(el: HTMLElement, types: String, fn: Function, context?: Object): this
+	// Removes a previously added listener function. If no function is specified,
+	// it will remove all the listeners of that particular DOM event from the element.
+	// Note that if you passed a custom context to on, you must pass the same
+	// context to `off` in order to remove the listener.
+
+	// @alternative
+	// @function off(el: HTMLElement, eventMap: Object, context?: Object): this
+	// Removes a set of type/listener pairs, e.g. `{click: onClick, mousemove: onMouseMove}`
+	off: function (obj, types, fn, context) {
+=======
+	off: function (obj, types, fn, context, capture) {
+>>>>>>> origin/drag-cancel-click
+
+		if (typeof types === 'object') {
+			for (var type in types) {
+				this._off(obj, type, types[type], fn);
+			}
+		} else {
+			types = L.Util.splitWords(types);
+
+			for (var i = 0, len = types.length; i < len; i++) {
+				this._off(obj, types[i], fn, context, capture);
+			}
+		}
+
+		return this;
+	},
+
+<<<<<<< HEAD
+	once: function (el, types, fn, context) {
+
+		if (typeof types === 'object') {
+			for (var type in types) {
+				L.DomEvent.once(el, type, types[type], fn);
+			}
+			return L.DomEvent;
+		}
+
+		var handler = L.bind(function () {
+			L.DomEvent
+			    .off(el, types, fn, context)
+			    .off(el, types, handler, context);
+		}, L.DomEvent);
+
+		// add a listener that's executed once and removed after that
+		return L.DomEvent
+		    .on(el, types, fn, context)
+		    .on(el, types, handler, context);
+	},
+
+	_on: function (obj, type, fn, context) {
+=======
+	_on: function (obj, type, fn, context, capture) {
+>>>>>>> origin/drag-cancel-click
+		var id = type + L.stamp(fn) + (context ? '_' + L.stamp(context) : '');
+
+		if (obj[eventsKey] && obj[eventsKey][id]) { return this; }
+
+		var handler = function (e) {
+			return fn.call(context || obj, e || window.event);
 		};
 
-		if (L.Browser.pointer && type.indexOf('touch') === 0) {
-			return this.addPointerListener(obj, type, handler, id);
-		}
-		if (L.Browser.touch && (type === 'dblclick') && this.addDoubleTapListener) {
-			this.addDoubleTapListener(obj, handler, id);
-		}
+		var originalHandler = handler;
 
-		if ('addEventListener' in obj) {
+		if (L.Browser.pointer && type.indexOf('touch') === 0) {
+			this.addPointerListener(obj, type, handler, id);
+
+		} else if (L.Browser.touch && (type === 'dblclick') && this.addDoubleTapListener) {
+			this.addDoubleTapListener(obj, handler, id);
+
+		} else if ('addEventListener' in obj) {
 
 			if (type === 'mousewheel') {
-				obj.addEventListener('DOMMouseScroll', handler, false);
-				obj.addEventListener(type, handler, false);
+<<<<<<< HEAD
+				obj.addEventListener('onwheel' in obj ? 'wheel' : 'mousewheel', handler, false);
+=======
+				obj.addEventListener('DOMMouseScroll', handler, capture);
+				obj.addEventListener(type, handler, capture);
+>>>>>>> origin/drag-cancel-click
 
 			} else if ((type === 'mouseenter') || (type === 'mouseleave')) {
-
-				originalHandler = handler;
-				newType = (type === 'mouseenter' ? 'mouseover' : 'mouseout');
-
 				handler = function (e) {
-					if (!L.DomEvent._checkMouse(obj, e)) { return; }
-					return originalHandler(e);
+					e = e || window.event;
+					if (L.DomEvent._isExternalTarget(obj, e)) {
+						originalHandler(e);
+					}
 				};
+				obj.addEventListener(type === 'mouseenter' ? 'mouseover' : 'mouseout', handler, capture);
 
-				obj.addEventListener(newType, handler, false);
-
-			} else if (type === 'click' && L.Browser.android) {
-				originalHandler = handler;
-				handler = function (e) {
-					return L.DomEvent._filterClick(e, originalHandler);
-				};
-
-				obj.addEventListener(type, handler, false);
 			} else {
-				obj.addEventListener(type, handler, false);
+				if (type === 'click' && L.Browser.android) {
+					handler = function (e) {
+						return L.DomEvent._filterClick(e, originalHandler);
+					};
+				}
+				obj.addEventListener(type, handler, capture);
 			}
 
 		} else if ('attachEvent' in obj) {
 			obj.attachEvent('on' + type, handler);
 		}
 
-		obj[key] = handler;
+		obj[eventsKey] = obj[eventsKey] || {};
+		obj[eventsKey][id] = handler;
 
 		return this;
 	},
 
-	removeListener: function (obj, type, fn) {  // (HTMLElement, String, Function)
+	_off: function (obj, type, fn, context, capture) {
 
-		var id = L.stamp(fn),
-		    key = '_leaflet_' + type + id,
-		    handler = obj[key];
+		var id = type + L.stamp(fn) + (context ? '_' + L.stamp(context) : ''),
+		    handler = obj[eventsKey] && obj[eventsKey][id];
 
 		if (!handler) { return this; }
 
 		if (L.Browser.pointer && type.indexOf('touch') === 0) {
 			this.removePointerListener(obj, type, id);
+
 		} else if (L.Browser.touch && (type === 'dblclick') && this.removeDoubleTapListener) {
 			this.removeDoubleTapListener(obj, id);
 
 		} else if ('removeEventListener' in obj) {
 
 			if (type === 'mousewheel') {
-				obj.removeEventListener('DOMMouseScroll', handler, false);
-				obj.removeEventListener(type, handler, false);
+<<<<<<< HEAD
+				obj.removeEventListener('onwheel' in obj ? 'wheel' : 'mousewheel', handler, false);
+=======
+				obj.removeEventListener('DOMMouseScroll', handler, capture);
+				obj.removeEventListener(type, handler, capture);
+>>>>>>> origin/drag-cancel-click
 
-			} else if ((type === 'mouseenter') || (type === 'mouseleave')) {
-				obj.removeEventListener((type === 'mouseenter' ? 'mouseover' : 'mouseout'), handler, false);
 			} else {
-				obj.removeEventListener(type, handler, false);
+				obj.removeEventListener(
+					type === 'mouseenter' ? 'mouseover' :
+					type === 'mouseleave' ? 'mouseout' : type, handler, capture);
 			}
+
 		} else if ('detachEvent' in obj) {
 			obj.detachEvent('on' + type, handler);
 		}
 
-		obj[key] = null;
+		obj[eventsKey][id] = null;
 
 		return this;
 	},
 
+	// @function stopPropagation(ev: DOMEvent): this
+	// Stop the given event from propagation to parent elements. Used inside the listener functions:
+	// ```js
+	// L.DomEvent.on(div, 'click', function (ev) {
+	// 	L.DomEvent.stopPropagation(ev);
+	// });
+	// ```
 	stopPropagation: function (e) {
 
 		if (e.stopPropagation) {
 			e.stopPropagation();
+		} else if (e.originalEvent) {  // In case of Leaflet event.
+			e.originalEvent._stopped = true;
 		} else {
 			e.cancelBubble = true;
 		}
@@ -106,26 +210,31 @@ L.DomEvent = {
 		return this;
 	},
 
+	// @function disableScrollPropagation(el: HTMLElement): this
+	// Adds `stopPropagation` to the element's `'mousewheel'` events (plus browser variants).
 	disableScrollPropagation: function (el) {
-		var stop = L.DomEvent.stopPropagation;
-
-		return L.DomEvent
-			.on(el, 'mousewheel', stop)
-			.on(el, 'MozMousePixelScroll', stop);
+		return L.DomEvent.on(el, 'mousewheel', L.DomEvent.stopPropagation);
 	},
 
+	// @function disableClickPropagation(el: HTMLElement): this
+	// Adds `stopPropagation` to the element's `'click'`, `'doubleclick'`,
+	// `'mousedown'` and `'touchstart'` events (plus browser variants).
 	disableClickPropagation: function (el) {
 		var stop = L.DomEvent.stopPropagation;
 
-		for (var i = L.Draggable.START.length - 1; i >= 0; i--) {
-			L.DomEvent.on(el, L.Draggable.START[i], stop);
-		}
+		L.DomEvent.on(el, L.Draggable.START.join(' '), stop);
 
-		return L.DomEvent
-			.on(el, 'click', L.DomEvent._fakeStop)
-			.on(el, 'dblclick', stop);
+		return L.DomEvent.on(el, {
+			click: L.DomEvent._fakeStop,
+			dblclick: stop
+		});
 	},
 
+	// @function preventDefault(ev: DOMEvent): this
+	// Prevents the default action of the DOM Event `ev` from happening (such as
+	// following a link in the href of the a element, or doing a POST request
+	// with page reload when a `<form>` is submitted).
+	// Use it inside listener functions.
 	preventDefault: function (e) {
 
 		if (e.preventDefault) {
@@ -136,35 +245,44 @@ L.DomEvent = {
 		return this;
 	},
 
+	// @function stop(ev): this
+	// Does `stopPropagation` and `preventDefault` at the same time.
 	stop: function (e) {
 		return L.DomEvent
 			.preventDefault(e)
 			.stopPropagation(e);
 	},
 
+	// @function getMousePosition(ev: DOMEvent, container?: HTMLElement): Point
+	// Gets normalized mouse position from a DOM event relative to the
+	// `container` or to the whole page if not specified.
 	getMousePosition: function (e, container) {
 		if (!container) {
 			return new L.Point(e.clientX, e.clientY);
 		}
 
-		var rect = container.getBoundingClientRect();
+		// jshint camelcase: false
+		var offset = container._leaflet_offset || L.DomUtil.getOffset(container);
 
 		return new L.Point(
-			e.clientX - rect.left - container.clientLeft,
-			e.clientY - rect.top - container.clientTop);
+			e.clientX - offset.x,
+			e.clientY - offset.y);
 	},
 
+	// @function getWheelDelta(ev: DOMEvent): Number
+	// Gets normalized wheel delta from a mousewheel DOM event, in vertical
+	// pixels scrolled (negative if scrolling down).
+	// Events from pointing devices without precise scrolling are mapped to
+	// a best guess of between 50-60 pixels.
 	getWheelDelta: function (e) {
-
-		var delta = 0;
-
-		if (e.wheelDelta) {
-			delta = e.wheelDelta / 120;
-		}
-		if (e.detail) {
-			delta = -e.detail / 3;
-		}
-		return delta;
+		return (e.deltaY && e.deltaMode === 0) ? -e.deltaY :        // Pixels
+		       (e.deltaY && e.deltaMode === 1) ? -e.deltaY * 18 :   // Lines
+		       (e.deltaY && e.deltaMode === 2) ? -e.deltaY * 52 :   // Pages
+		       (e.deltaX || e.deltaZ) ? 0 :	// Skip horizontal/depth wheel events
+		       e.wheelDelta ? (e.wheelDeltaY || e.wheelDelta) / 2 : // Legacy IE pixels
+		       (e.detail && Math.abs(e.detail) < 32765) ? -e.detail * 18 : // Legacy Moz lines
+		       e.detail ? e.detail / -32765 * 52 : // Legacy Moz pages
+		       0;
 	},
 
 	_skipEvents: {},
@@ -182,7 +300,7 @@ L.DomEvent = {
 	},
 
 	// check if element really left/entered the event target (for mouseenter/mouseleave)
-	_checkMouse: function (el, e) {
+	_isExternalTarget: function (el, e) {
 
 		var related = e.relatedTarget;
 
@@ -198,26 +316,10 @@ L.DomEvent = {
 		return (related !== el);
 	},
 
-	_getEvent: function () { // evil magic for IE
-		/*jshint noarg:false */
-		var e = window.event;
-		if (!e) {
-			var caller = arguments.callee.caller;
-			while (caller) {
-				e = caller['arguments'][0];
-				if (e && window.Event === e.constructor) {
-					break;
-				}
-				caller = caller.caller;
-			}
-		}
-		return e;
-	},
-
 	// this is a horrible workaround for a bug in Android where a single touch triggers two click events
 	_filterClick: function (e, handler) {
-		var timeStamp = (e.timeStamp || e.originalEvent.timeStamp),
-			elapsed = L.DomEvent._lastClick && (timeStamp - L.DomEvent._lastClick);
+		var timeStamp = (e.timeStamp || (e.originalEvent && e.originalEvent.timeStamp)),
+		    elapsed = L.DomEvent._lastClick && (timeStamp - L.DomEvent._lastClick);
 
 		// are they closer together than 500ms yet more than 100ms?
 		// Android typically triggers them ~300ms apart while multiple listeners
@@ -230,9 +332,14 @@ L.DomEvent = {
 		}
 		L.DomEvent._lastClick = timeStamp;
 
-		return handler(e);
+		handler(e);
 	}
 };
 
-L.DomEvent.on = L.DomEvent.addListener;
-L.DomEvent.off = L.DomEvent.removeListener;
+// @function addListener(…): this
+// Alias to [`L.DomEvent.on`](#domevent-on)
+L.DomEvent.addListener = L.DomEvent.on;
+
+// @function removeListener(…): this
+// Alias to [`L.DomEvent.off`](#domevent-off)
+L.DomEvent.removeListener = L.DomEvent.off;

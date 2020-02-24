@@ -1,10 +1,18 @@
 /*
+ * @class Control
+ * @aka L.Control
+ *
  * L.Control is a base class for implementing map controls. Handles positioning.
  * All other controls extend from this class.
  */
 
 L.Control = L.Class.extend({
+	// @section
+	// @aka Control options
 	options: {
+		// @option position: String = 'topright'
+		// The position of the control (one of the map corners). Possible values are `'topleft'`,
+		// `'topright'`, `'bottomleft'` or `'bottomright'`
 		position: 'topright'
 	},
 
@@ -12,10 +20,18 @@ L.Control = L.Class.extend({
 		L.setOptions(this, options);
 	},
 
+	/* @section
+	 * Classes extending L.Control will inherit the following methods:
+	 *
+	 * @method getPosition: string
+	 * Returns the position of the control.
+	 */
 	getPosition: function () {
 		return this.options.position;
 	},
 
+	// @method setPosition(position: string): this
+	// Sets the position of the control.
 	setPosition: function (position) {
 		var map = this._map;
 
@@ -32,11 +48,16 @@ L.Control = L.Class.extend({
 		return this;
 	},
 
+	// @method getContainer: HTMLElement
+	// Returns the HTMLElement that contains the control.
 	getContainer: function () {
 		return this._container;
 	},
 
+	// @method addTo(map: Map): this
+	// Adds the control to the given map.
 	addTo: function (map) {
+		this.remove();
 		this._map = map;
 
 		var container = this._container = this.onAdd(map),
@@ -54,22 +75,27 @@ L.Control = L.Class.extend({
 		return this;
 	},
 
-	removeFrom: function (map) {
-		var pos = this.getPosition(),
-		    corner = map._controlCorners[pos];
+	// @method remove: this
+	// Removes the control from the map it is currently active on.
+	remove: function () {
+		if (!this._map) {
+			return this;
+		}
 
-		corner.removeChild(this._container);
-		this._map = null;
+		L.DomUtil.remove(this._container);
 
 		if (this.onRemove) {
-			this.onRemove(map);
+			this.onRemove(this._map);
 		}
+
+		this._map = null;
 
 		return this;
 	},
 
-	_refocusOnMap: function () {
-		if (this._map) {
+	_refocusOnMap: function (e) {
+		// if map exists and event is not a keyboard event
+		if (this._map && e && e.screenX > 0 && e.screenY > 0) {
 			this._map.getContainer().focus();
 		}
 	}
@@ -89,7 +115,7 @@ L.Map.include({
 	},
 
 	removeControl: function (control) {
-		control.removeFrom(this);
+		control.remove();
 		return this;
 	},
 
@@ -112,6 +138,6 @@ L.Map.include({
 	},
 
 	_clearControlPos: function () {
-		this._container.removeChild(this._controlContainer);
+		L.DomUtil.remove(this._controlContainer);
 	}
 });
