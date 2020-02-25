@@ -1,30 +1,29 @@
 /*
- * @class FeatureGroup
- * @aka L.FeatureGroup
- * @inherits LayerGroup
- *
- * Extended `LayerGroup` that also has mouse events (propagated from members of the group) and a shared bindPopup method.
- *
- * @example
- *
- * ```js
- * L.featureGroup([marker1, marker2, polyline])
- * 	.bindPopup('Hello world!')
- * 	.on('click', function() { alert('Clicked on a group!'); })
- * 	.addTo(map);
- * ```
+ * L.FeatureGroup extends L.LayerGroup by introducing mouse events and additional methods
+ * shared between a group of interactive layers (like vectors or markers).
  */
 
 L.FeatureGroup = L.LayerGroup.extend({
+	includes: L.Mixin.Events,
+
+	statics: {
+		EVENTS: 'click dblclick mouseover mouseout mousemove contextmenu popupopen popupclose'
+	},
 
 	addLayer: function (layer) {
 		if (this.hasLayer(layer)) {
 			return this;
 		}
 
-		layer.addEventParent(this);
+		if ('on' in layer) {
+			layer.on(L.FeatureGroup.EVENTS, this._propagateEvent, this);
+		}
 
 		L.LayerGroup.prototype.addLayer.call(this, layer);
+
+		if (this._popupContent && layer.bindPopup) {
+			layer.bindPopup(this._popupContent, this._popupOptions);
+		}
 
 		return this.fire('layeradd', {layer: layer});
 	},
@@ -37,46 +36,65 @@ L.FeatureGroup = L.LayerGroup.extend({
 			layer = this._layers[layer];
 		}
 
-		layer.removeEventParent(this);
+		if ('off' in layer) {
+			layer.off(L.FeatureGroup.EVENTS, this._propagateEvent, this);
+		}
 
 		L.LayerGroup.prototype.removeLayer.call(this, layer);
+
+		if (this._popupContent) {
+			this.invoke('unbindPopup');
+		}
 
 		return this.fire('layerremove', {layer: layer});
 	},
 
-	// @method setStyle(style: Path options): this
-	// Sets the given path options to each layer of the group that has a `setStyle` method.
+	bindPopup: function (content, options) {
+		this._popupContent = content;
+		this._popupOptions = options;
+		return this.invoke('bindPopup', content, options);
+	},
+
+	openPopup: function (latlng) {
+		// open popup on the first layer
+		for (var id in this._layers) {
+			this._layers[id].openPopup(latlng);
+			break;
+		}
+		return this;
+	},
+
 	setStyle: function (style) {
 		return this.invoke('setStyle', style);
 	},
 
-	// @method bringToFront(): this
-	// Brings the layer group to the top of all other layers
 	bringToFront: function () {
 		return this.invoke('bringToFront');
 	},
 
-	// @method bringToBack(): this
-	// Brings the layer group to the top of all other layers
 	bringToBack: function () {
 		return this.invoke('bringToBack');
 	},
 
-	// @method getBounds(): LatLngBounds
-	// Returns the LatLngBounds of the Feature Group (created from bounds and coordinates of its children).
 	getBounds: function () {
 		var bounds = new L.LatLngBounds();
 
-		for (var id in this._layers) {
-			var layer = this._layers[id];
-			bounds.extend(layer.getBounds ? layer.getBounds() : layer.getLatLng());
-		}
+		this.eachLayer(function (layer) {
+			bounds.extend(layer instanceof L.Marker ? layer.getLatLng() : layer.getBounds());
+		});
+
 		return bounds;
+	},
+
+	_propagateEvent: function (e) {
+		e = L.extend({
+			layer: e.target,
+			target: this
+		}, e);
+		this.fire(e.type, e);
 	}
 });
 
-// @factory L.featureGroup(layers: Layer[])
-// Create a feature group, optionally given an initial set of layers.
 L.featureGroup = function (layers) {
 	return new L.FeatureGroup(layers);
 };
